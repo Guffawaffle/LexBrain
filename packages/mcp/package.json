@@ -1,0 +1,12 @@
+{
+  "name": "lexbrain-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP manifest and schemas for LexBrain",
+  "files": [
+    "manifest.json",
+    "schemas/"
+  ],
+  "license": "MIT"
+}

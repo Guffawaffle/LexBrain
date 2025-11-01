@@ -1,0 +1,21 @@
+{
+  "name": "lexbrain",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter lexbrain-server dev",
+    "smoke": "pnpm --filter lexbrain-server smoke"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "license": "MIT"
+}
