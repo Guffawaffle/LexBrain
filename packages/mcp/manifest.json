@@ -1,0 +1,111 @@
+{
+  "name": "lexbrain",
+  "version": "0.1.0",
+  "description": "Deterministic, append-only fact storage with client-side encryption",
+  "tools": [
+    {
+      "name": "thought.put",
+      "description": "Append a fact to the knowledge store",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["repo_scan", "dep_graph", "dep_score", "plan", "merge_order", "gate_result", "artifact", "note"],
+            "description": "Type of thought/fact being stored"
+          },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "repo": { "type": "string", "description": "Repository identifier" },
+              "commit": { "type": "string", "description": "Commit hash" },
+              "path": { "type": "string", "description": "Optional file path" },
+              "symbol": { "type": "string", "description": "Optional symbol name" }
+            },
+            "required": ["repo", "commit"],
+            "description": "Scope context for the fact"
+          },
+          "inputs_hash": {
+            "type": "string",
+            "description": "Deterministic hash of the inputs that produced this fact"
+          },
+          "payload": {
+            "description": "The actual fact data (any JSON-serializable value)"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Optional confidence score"
+          },
+          "ttl_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "description": "Time-to-live in seconds"
+          },
+          "actor": {
+            "description": "Optional actor/source information"
+          },
+          "refs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional references to other facts"
+          }
+        },
+        "required": ["kind", "scope", "inputs_hash", "payload"]
+      }
+    },
+    {
+      "name": "thought.get",
+      "description": "Query facts from the knowledge store",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "repo": { "type": "string", "description": "Repository identifier" },
+          "commit": { "type": "string", "description": "Commit hash" },
+          "kind": {
+            "type": "string",
+            "enum": ["repo_scan", "dep_graph", "dep_score", "plan", "merge_order", "gate_result", "artifact", "note"],
+            "description": "Type of thought/fact to query"
+          },
+          "path": { "type": "string", "description": "Optional file path filter" },
+          "symbol": { "type": "string", "description": "Optional symbol name filter" },
+          "inputs_hash": { "type": "string", "description": "Optional exact inputs hash filter" }
+        },
+        "required": ["repo", "commit", "kind"]
+      }
+    },
+    {
+      "name": "thought.lock",
+      "description": "Acquire an advisory lock for coordination",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique name for the lock"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "thought.unlock",
+      "description": "Release an advisory lock",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the lock to release"
+          }
+        },
+        "required": ["name"]
+      }
+    }
+  ],
+  "server": {
+    "type": "http",
+    "url": "http://localhost:8123"
+  }
+}
