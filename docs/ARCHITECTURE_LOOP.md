@@ -294,5 +294,6 @@ Just: "Here's what you were doing, why it mattered, and what you said you'd do n
 ## Next Steps
 
 - Read the [Adoption Guide](./ADOPTION_GUIDE.md) to roll out LexBrain in phases
+- Read the [Mind Palace Guide](./MIND_PALACE.md) to learn about reference points and Atlas Frames
 - Read the [FAQ](./FAQ.md) for privacy, security, and compliance questions
 - Read [Contributing](../CONTRIBUTING.md) to extend LexBrain safely

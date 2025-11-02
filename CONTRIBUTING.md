@@ -40,8 +40,8 @@ The Frame metadata schema is **contract-grade**. Other tools (LexMap, MCP client
 If you want to add a new field:
 
 1. **Propose it in an issue first** — explain what problem it solves and why it belongs in every Frame
-2. **Update the schema** — add the field to the Frame metadata type definition (in `src/types.ts` or equivalent)
-3. **Update the docs** — the new field must be documented in `README.md`, `docs/OVERVIEW.md`, and `docs/ARCHITECTURE_LOOP.md`
+2. **Update the schema** — add the field to the Frame metadata type definition (in `src/types.ts` or equivalent) and to `docs/schemas/README.md`
+3. **Update the docs** — the new field must be documented in `README.md`, `docs/OVERVIEW.md`, `docs/ARCHITECTURE_LOOP.md`, and `docs/schemas/README.md`
 4. **Ensure backward compatibility** — existing Frames must still be readable; new fields should be optional or have sensible defaults
 5. **Update the renderer** — if the field should appear on memory card images, update the image generation logic
 
