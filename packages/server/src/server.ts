@@ -18,6 +18,9 @@ import {
   AtlasFrame,
 } from "./types.js";
 
+// Constants
+const ATLAS_FRAME_CRITICAL_RULE = "THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap";
+
 // Environment configuration
 const config = {
   port: parseInt(process.env.PORT || "6901"),
@@ -339,7 +342,7 @@ app.post("/mcp/tools/call", async (req, res) => {
           fold_radius: args.fold_radius,
           modules: args.modules,
           edges: args.edges,
-          critical_rule: args.critical_rule || "THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap"
+          critical_rule: args.critical_rule || ATLAS_FRAME_CRITICAL_RULE
         };
         
         const inserted = db.insertAtlasFrame(atlasFrame);

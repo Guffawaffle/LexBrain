@@ -415,16 +415,21 @@ export class DbManager {
     
     if (!row) return null;
 
-    return {
-      atlas_frame_id: row.atlas_frame_id,
-      frame_id: row.frame_id,
-      atlas_timestamp: row.atlas_timestamp,
-      reference_module: row.reference_module,
-      fold_radius: row.fold_radius,
-      modules: JSON.parse(row.modules),
-      edges: JSON.parse(row.edges),
-      critical_rule: row.critical_rule
-    };
+    try {
+      return {
+        atlas_frame_id: row.atlas_frame_id,
+        frame_id: row.frame_id,
+        atlas_timestamp: row.atlas_timestamp,
+        reference_module: row.reference_module,
+        fold_radius: row.fold_radius,
+        modules: JSON.parse(row.modules),
+        edges: JSON.parse(row.edges),
+        critical_rule: row.critical_rule
+      };
+    } catch (error) {
+      console.error(`Failed to parse Atlas Frame ${atlasFrameId}:`, error);
+      return null;
+    }
   }
 
   getAtlasFrameByFrameId(frameId: string): AtlasFrame | null {
@@ -435,16 +440,21 @@ export class DbManager {
     
     if (!row) return null;
 
-    return {
-      atlas_frame_id: row.atlas_frame_id,
-      frame_id: row.frame_id,
-      atlas_timestamp: row.atlas_timestamp,
-      reference_module: row.reference_module,
-      fold_radius: row.fold_radius,
-      modules: JSON.parse(row.modules),
-      edges: JSON.parse(row.edges),
-      critical_rule: row.critical_rule
-    };
+    try {
+      return {
+        atlas_frame_id: row.atlas_frame_id,
+        frame_id: row.frame_id,
+        atlas_timestamp: row.atlas_timestamp,
+        reference_module: row.reference_module,
+        fold_radius: row.fold_radius,
+        modules: JSON.parse(row.modules),
+        edges: JSON.parse(row.edges),
+        critical_rule: row.critical_rule
+      };
+    } catch (error) {
+      console.error(`Failed to parse Atlas Frame for frame ${frameId}:`, error);
+      return null;
+    }
   }
 
   getCachedAtlasFrame(referenceModule: string, foldRadius: number): AtlasFrame | null {
@@ -458,16 +468,21 @@ export class DbManager {
     
     if (!row) return null;
 
-    return {
-      atlas_frame_id: row.atlas_frame_id,
-      frame_id: row.frame_id,
-      atlas_timestamp: row.atlas_timestamp,
-      reference_module: row.reference_module,
-      fold_radius: row.fold_radius,
-      modules: JSON.parse(row.modules),
-      edges: JSON.parse(row.edges),
-      critical_rule: row.critical_rule
-    };
+    try {
+      return {
+        atlas_frame_id: row.atlas_frame_id,
+        frame_id: row.frame_id,
+        atlas_timestamp: row.atlas_timestamp,
+        reference_module: row.reference_module,
+        fold_radius: row.fold_radius,
+        modules: JSON.parse(row.modules),
+        edges: JSON.parse(row.edges),
+        critical_rule: row.critical_rule
+      };
+    } catch (error) {
+      console.error(`Failed to parse cached Atlas Frame for ${referenceModule}:`, error);
+      return null;
+    }
   }
 
   close() {
