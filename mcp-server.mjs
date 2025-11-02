@@ -21,6 +21,7 @@ import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 import Database from "better-sqlite3";
+import { readFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -343,6 +344,128 @@ const tools = {
           {
             type: "text",
             text: `Lock "${args.name}": ${ok ? "RELEASED" : "NOT FOUND"}`,
+          },
+        ],
+      };
+    },
+  },
+
+  lexmap_get_atlas_frame: {
+    description: "Get structural neighborhood data for modules from LexMap policy",
+    inputSchema: {
+      type: "object",
+      required: ["module_scope"],
+      properties: {
+        module_scope: {
+          type: "array",
+          items: { type: "string" },
+          description: "Seed module IDs (must match IDs in lexmap.policy.json)",
+        },
+        fold_radius: {
+          type: "number",
+          default: 1,
+          description: "How many hops to expand from seed modules (default: 1)",
+        },
+      },
+    },
+    call: async (args) => {
+      // Load lexmap.policy.json
+      const policyPath = resolve(__dirname, "lexmap.policy.json");
+      let policy;
+      try {
+        const policyContent = readFileSync(policyPath, "utf-8");
+        policy = JSON.parse(policyContent);
+      } catch (error) {
+        throw new Error(`Failed to load lexmap.policy.json: ${error.message}`);
+      }
+
+      const modules = policy.modules || {};
+      const moduleScope = args.module_scope || [];
+      const foldRadius = args.fold_radius || 1;
+
+      // Validate seed modules exist in policy
+      for (const moduleId of moduleScope) {
+        if (!modules[moduleId]) {
+          throw new Error(
+            `Module "${moduleId}" not found in lexmap.policy.json. Available modules: ${Object.keys(
+              modules
+            ).join(", ")}`
+          );
+        }
+      }
+
+      // Extract neighborhood using fold-radius expansion
+      const neighborhood = new Set(moduleScope);
+      const visited = new Set();
+
+      // Expand neighborhood by fold_radius hops
+      for (let hop = 0; hop < foldRadius; hop++) {
+        const currentLayer = [...neighborhood].filter((id) => !visited.has(id));
+
+        for (const moduleId of currentLayer) {
+          visited.add(moduleId);
+          const module = modules[moduleId];
+
+          // Add allowed callers (modules that can call this one)
+          if (module.allowed_callers) {
+            for (const caller of module.allowed_callers) {
+              if (modules[caller]) {
+                neighborhood.add(caller);
+              }
+            }
+          }
+
+          // Add modules this one is allowed to call
+          // (find modules where this moduleId is in their allowed_callers)
+          for (const [otherId, otherModule] of Object.entries(modules)) {
+            if (
+              otherModule.allowed_callers &&
+              otherModule.allowed_callers.includes(moduleId)
+            ) {
+              neighborhood.add(otherId);
+            }
+          }
+
+          // Also consider forbidden_callers for structural awareness
+          if (module.forbidden_callers) {
+            for (const forbiddenCaller of module.forbidden_callers) {
+              if (modules[forbiddenCaller]) {
+                neighborhood.add(forbiddenCaller);
+              }
+            }
+          }
+        }
+      }
+
+      // Build modules array with data from policy
+      const modulesList = [...neighborhood].map((moduleId) => {
+        const module = modules[moduleId];
+        return {
+          id: moduleId,
+          coords: module.coords || [0, 0],
+          allowed_callers: module.allowed_callers || [],
+          forbidden_callers: module.forbidden_callers || [],
+          feature_flags: module.feature_flags || [],
+          requires_permissions: module.requires_permissions || [],
+          kill_patterns: module.kill_patterns || [],
+        };
+      });
+
+      // Generate Atlas Frame data blob
+      const atlasFrame = {
+        atlas_timestamp: new Date().toISOString(),
+        seed_modules: moduleScope,
+        fold_radius: foldRadius,
+        modules: modulesList,
+        critical_rule:
+          "Every module name MUST match the IDs in lexmap.policy.json. No ad hoc naming.",
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(atlasFrame, null, 2),
           },
         ],
       };
