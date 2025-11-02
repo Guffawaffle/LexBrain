@@ -11,7 +11,7 @@
       "coords": [0, 2],
       "description": "User administration UI panel with user management controls",
       "owns_paths": ["web-ui/userAdmin/**"],
-      "allowed_callers": ["services/user-access-api"],
+      "allowed_callers": [],
       "forbidden_callers": ["services/auth-core"],
       "feature_flags": ["beta_user_admin"],
       "requires_permissions": ["can_manage_users"],
@@ -21,7 +21,7 @@
       "coords": [1, 2],
       "description": "API layer for user access control and management",
       "owns_paths": ["services/userAccess/**"],
-      "allowed_callers": ["ui/user-admin-panel", "services/admin-api"],
+      "allowed_callers": ["ui/user-admin-panel", "ui/admin-dashboard"],
       "feature_flags": ["beta_user_admin"],
       "requires_permissions": ["can_manage_users"]
     },
@@ -36,7 +36,7 @@
       "coords": [2, 1],
       "description": "Session management and lifecycle handling",
       "owns_paths": ["services/sessions/**"],
-      "allowed_callers": ["services/user-access-api", "services/admin-api"],
+      "allowed_callers": ["services/user-access-api", "services/auth-core"],
       "requires_permissions": ["internal_service"]
     },
     "services/admin-api": {
