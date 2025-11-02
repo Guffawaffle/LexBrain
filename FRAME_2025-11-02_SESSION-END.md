@@ -1,8 +1,8 @@
 # 🧠 LexBrain Frame: Paper Publication Sprint - Session End
 
-**Timestamp**: 2025-11-02T00:25:00Z  
-**Author**: Joseph Gustavson  
-**Status**: Paused - Ready to Resume  
+**Timestamp**: 2025-11-02T00:25:00Z
+**Author**: Joseph Gustavson
+**Status**: Paused - Ready to Resume
 **Branch**: `paper/v0.1.1-wordwrap-fix`
 
 ---
@@ -117,9 +117,9 @@
 
 ## ✅ Status Snapshot
 
-**Tests Failing**: 0  
-**Merge Blockers**: 0  
-**Ready for Upload**: ✅ Yes  
+**Tests Failing**: 0
+**Merge Blockers**: 0
+**Ready for Upload**: ✅ Yes
 
 **Files Ready**:
 - PDF: `/srv/lex-mcp/lex-brain/docs/adjacency-constrained-episodic-memory.pdf` (188 KB)
@@ -181,6 +181,6 @@ Rest well. When you're back, pick the vocabulary approach that feels right and s
 
 ---
 
-*Frame saved at: 2025-11-02T00:25:00Z*  
-*Next session: TBD*  
+*Frame saved at: 2025-11-02T00:25:00Z*
+*Next session: TBD*
 *Priority: Medium (can wait until you're rested)*
