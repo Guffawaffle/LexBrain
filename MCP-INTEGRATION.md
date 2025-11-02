@@ -64,6 +64,7 @@ That's it! The MCP server handles everything - database initialization, storage,
 - **thought_get**: Query facts from the knowledge base
 - **thought_lock**: Acquire advisory locks
 - **thought_unlock**: Release advisory locks
+- **lexmap_get_atlas_frame**: Get structural neighborhood data for modules from LexMap policy
 
 ## Configuration
 
@@ -178,6 +179,58 @@ Release an advisory lock.
 }
 ```
 
+### lexmap.get_atlas_frame
+
+Get structural neighborhood data for modules from LexMap policy. Returns an Atlas Frame data blob containing modules within a specified fold-radius from seed modules.
+
+**Input:**
+```json
+{
+  "module_scope": ["ui/user-admin-panel"],
+  "fold_radius": 1
+}
+```
+
+**Output:**
+```json
+{
+  "atlas_timestamp": "2025-11-02T05:55:20.680Z",
+  "seed_modules": ["ui/user-admin-panel"],
+  "fold_radius": 1,
+  "modules": [
+    {
+      "id": "ui/user-admin-panel",
+      "coords": [0, 2],
+      "allowed_callers": [],
+      "forbidden_callers": ["services/auth-core"],
+      "feature_flags": ["beta_user_admin"],
+      "requires_permissions": ["can_manage_users"],
+      "kill_patterns": ["duplicate_auth_logic"]
+    },
+    {
+      "id": "services/user-access-api",
+      "coords": [1, 2],
+      "allowed_callers": ["ui/user-admin-panel", "ui/admin-dashboard"],
+      "forbidden_callers": [],
+      "feature_flags": ["beta_user_admin"],
+      "requires_permissions": ["can_manage_users"],
+      "kill_patterns": []
+    }
+  ],
+  "critical_rule": "Every module name MUST match the IDs in lexmap.policy.json. No ad hoc naming."
+}
+```
+
+**Parameters:**
+- `module_scope` (required): Array of seed module IDs from `lexmap.policy.json`
+- `fold_radius` (optional, default: 1): Number of hops to expand from seed modules
+
+**Use Cases:**
+- Generate visual context cards showing module relationships
+- Understand architectural neighborhoods around specific modules
+- Validate allowed/forbidden caller relationships
+- Export structural data for Atlas Frame storage
+
 ## Architecture
 
 ```
@@ -227,6 +280,23 @@ Claude will automatically translate this to:
 Acquire a lock named "analysis-in-progress" before starting analysis,
 then release it when complete.
 ```
+
+### Get module neighborhood from LexMap
+
+```
+Use lexmap.get_atlas_frame to show me the structural neighborhood around 
+"ui/user-admin-panel" with a fold radius of 2.
+```
+
+Claude will automatically translate this to:
+```json
+{
+  "module_scope": ["ui/user-admin-panel"],
+  "fold_radius": 2
+}
+```
+
+This returns all modules within 2 hops of the seed module, including their coordinates, allowed/forbidden callers, and policy constraints.
 
 ## Performance
 
