@@ -370,6 +370,8 @@ const tools = {
     },
     call: async (args) => {
       // Load lexmap.policy.json
+      // Note: Future optimization could cache the parsed policy and use file watching
+      // for updates, but keeping it simple for now to match existing tool patterns
       const policyPath = resolve(__dirname, "lexmap.policy.json");
       let policy;
       try {
