@@ -10,7 +10,8 @@ export const ThoughtKind = z.enum([
   'merge_order',
   'gate_result',
   'artifact',
-  'note'
+  'note',
+  'frame'
 ]);
 
 export type ThoughtKind = z.infer<typeof ThoughtKind>;
@@ -38,6 +39,30 @@ export const ThoughtFact = z.object({
 });
 
 export type ThoughtFact = z.infer<typeof ThoughtFact>;
+
+// Frame schema - represents a work session snapshot
+export const FrameStatusSnapshot = z.object({
+  next_action: z.string(),
+  blockers: z.array(z.string()).optional(),
+  merge_blockers: z.array(z.string()).optional()
+});
+
+export type FrameStatusSnapshot = z.infer<typeof FrameStatusSnapshot>;
+
+export const Frame = z.object({
+  id: z.string(),
+  timestamp: z.string(),
+  branch: z.string(),
+  jira: z.string().optional(),
+  module_scope: z.array(z.string()),
+  summary_caption: z.string(),
+  reference_point: z.string(),
+  status_snapshot: FrameStatusSnapshot,
+  keywords: z.array(z.string()).optional(),
+  atlas_frame_id: z.string().optional()
+});
+
+export type Frame = z.infer<typeof Frame>;
 
 // Client configuration
 export interface LexBrainOptions {
