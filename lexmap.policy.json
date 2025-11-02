@@ -1,0 +1,71 @@
+{
+  "$schema": "./docs/schemas/policy.schema.json",
+  "version": "1.0.0",
+  "metadata": {
+    "description": "Example LexMap policy file demonstrating spatial coordinates for modules",
+    "last_updated": "2025-11-02T03:39:00Z",
+    "maintainers": ["LexBrain Team"]
+  },
+  "modules": {
+    "ui/user-admin-panel": {
+      "coords": [0, 2],
+      "description": "User administration UI panel with user management controls",
+      "owns_paths": ["web-ui/userAdmin/**"],
+      "allowed_callers": [],
+      "forbidden_callers": ["services/auth-core"],
+      "feature_flags": ["beta_user_admin"],
+      "requires_permissions": ["can_manage_users"],
+      "kill_patterns": ["duplicate_auth_logic"]
+    },
+    "services/user-access-api": {
+      "coords": [1, 2],
+      "description": "API layer for user access control and management",
+      "owns_paths": ["services/userAccess/**"],
+      "allowed_callers": ["ui/user-admin-panel", "ui/admin-dashboard"],
+      "feature_flags": ["beta_user_admin"],
+      "requires_permissions": ["can_manage_users"]
+    },
+    "services/auth-core": {
+      "coords": [2, 2],
+      "description": "Core authentication service - foundational layer",
+      "owns_paths": ["services/auth/**"],
+      "allowed_callers": ["services/user-access-api", "services/session-manager"],
+      "requires_permissions": ["internal_service"]
+    },
+    "services/session-manager": {
+      "coords": [2, 1],
+      "description": "Session management and lifecycle handling",
+      "owns_paths": ["services/sessions/**"],
+      "allowed_callers": ["services/user-access-api", "services/auth-core"],
+      "requires_permissions": ["internal_service"]
+    },
+    "services/admin-api": {
+      "coords": [1, 0],
+      "description": "Administrative API endpoints",
+      "owns_paths": ["services/admin/**"],
+      "allowed_callers": ["ui/admin-dashboard"],
+      "requires_permissions": ["admin_access"]
+    },
+    "ui/admin-dashboard": {
+      "coords": [0, 0],
+      "description": "Main administrative dashboard UI",
+      "owns_paths": ["web-ui/admin/**"],
+      "allowed_callers": [],
+      "requires_permissions": ["admin_access"]
+    },
+    "data/user-store": {
+      "coords": [3, 2],
+      "description": "User data persistence layer",
+      "owns_paths": ["data/users/**"],
+      "allowed_callers": ["services/user-access-api", "services/auth-core"],
+      "requires_permissions": ["internal_service"]
+    },
+    "data/session-store": {
+      "coords": [3, 1],
+      "description": "Session data persistence layer",
+      "owns_paths": ["data/sessions/**"],
+      "allowed_callers": ["services/session-manager"],
+      "requires_permissions": ["internal_service"]
+    }
+  }
+}

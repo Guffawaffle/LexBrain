@@ -217,6 +217,7 @@ LexBrain is:
 ## Learn More
 
 - [Overview](./docs/OVERVIEW.md) — the pain, the solution, the moat
+- [Policy Documentation](./docs/POLICY.md) — LexMap policy schema and spatial coordinates
 - [Adoption Guide](./docs/ADOPTION_GUIDE.md) — how to roll out LexBrain in phases
 - [Architecture Loop](./docs/ARCHITECTURE_LOOP.md) — the full explainability story
 - [FAQ](./docs/FAQ.md) — privacy, security, compliance

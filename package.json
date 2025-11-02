@@ -14,7 +14,8 @@
     "build": "pnpm -r build",
     "dev": "pnpm --filter lexbrain-server dev",
     "smoke": "pnpm --filter lexbrain-server smoke",
-    "mcp": "node mcp-server.mjs"
+    "mcp": "node mcp-server.mjs",
+    "validate-policy": "node scripts/validate-policy.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -23,6 +24,7 @@
     "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
+    "ajv": "^8.17.1",
     "typescript": "^5.3.0"
   },
   "license": "MIT",
