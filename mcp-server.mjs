@@ -121,6 +121,8 @@ const tools = {
             "gate_result",
             "artifact",
             "note",
+            "frame",
+            "atlas_frame",
           ],
         },
         scope: {
@@ -237,6 +239,8 @@ const tools = {
             "gate_result",
             "artifact",
             "note",
+            "frame",
+            "atlas_frame",
           ],
         },
         path: { type: "string" },

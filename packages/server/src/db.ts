@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ThoughtFact, Frame } from './types.js';
+import { ThoughtFact, Frame, AtlasFrame } from './types.js';
 
 export interface DbRow {
   fact_id: string;
@@ -27,6 +27,17 @@ export interface FrameRow {
   status_snapshot: string;
   keywords: string | null;
   atlas_frame_id: string | null;
+}
+
+export interface AtlasFrameRow {
+  atlas_frame_id: string;
+  frame_id: string;
+  atlas_timestamp: string;
+  reference_module: string;
+  fold_radius: number;
+  modules: string;
+  edges: string;
+  critical_rule: string;
 }
 
 export class DbManager {
@@ -78,6 +89,19 @@ export class DbManager {
     `);
 
     this.db.exec(`
+      CREATE TABLE IF NOT EXISTS atlas_frames (
+        atlas_frame_id TEXT PRIMARY KEY,
+        frame_id TEXT NOT NULL,
+        atlas_timestamp TEXT NOT NULL,
+        reference_module TEXT NOT NULL,
+        fold_radius INTEGER NOT NULL,
+        modules TEXT NOT NULL,
+        edges TEXT NOT NULL,
+        critical_rule TEXT NOT NULL
+      );
+    `);
+
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS locks (
         name TEXT PRIMARY KEY
       );
@@ -112,6 +136,17 @@ export class DbManager {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_frames_jira
       ON frames(jira);
+    `);
+
+    // Create indexes for atlas_frames table
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_atlas_frames_frame_id
+      ON atlas_frames(frame_id);
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_atlas_frames_reference_module
+      ON atlas_frames(reference_module, fold_radius);
     `);
 
     // Create FTS5 virtual table for fuzzy search on reference_point
@@ -348,6 +383,91 @@ export class DbManager {
       keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
       atlas_frame_id: row.atlas_frame_id || undefined
     }));
+  }
+
+  insertAtlasFrame(atlasFrame: AtlasFrame): boolean {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO atlas_frames (
+        atlas_frame_id, frame_id, atlas_timestamp, reference_module,
+        fold_radius, modules, edges, critical_rule
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      atlasFrame.atlas_frame_id,
+      atlasFrame.frame_id,
+      atlasFrame.atlas_timestamp,
+      atlasFrame.reference_module,
+      atlasFrame.fold_radius,
+      JSON.stringify(atlasFrame.modules),
+      JSON.stringify(atlasFrame.edges),
+      atlasFrame.critical_rule
+    );
+
+    return result.changes > 0;
+  }
+
+  getAtlasFrameById(atlasFrameId: string): AtlasFrame | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM atlas_frames WHERE atlas_frame_id = ?
+    `);
+    const row = stmt.get(atlasFrameId) as AtlasFrameRow | undefined;
+    
+    if (!row) return null;
+
+    return {
+      atlas_frame_id: row.atlas_frame_id,
+      frame_id: row.frame_id,
+      atlas_timestamp: row.atlas_timestamp,
+      reference_module: row.reference_module,
+      fold_radius: row.fold_radius,
+      modules: JSON.parse(row.modules),
+      edges: JSON.parse(row.edges),
+      critical_rule: row.critical_rule
+    };
+  }
+
+  getAtlasFrameByFrameId(frameId: string): AtlasFrame | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM atlas_frames WHERE frame_id = ?
+    `);
+    const row = stmt.get(frameId) as AtlasFrameRow | undefined;
+    
+    if (!row) return null;
+
+    return {
+      atlas_frame_id: row.atlas_frame_id,
+      frame_id: row.frame_id,
+      atlas_timestamp: row.atlas_timestamp,
+      reference_module: row.reference_module,
+      fold_radius: row.fold_radius,
+      modules: JSON.parse(row.modules),
+      edges: JSON.parse(row.edges),
+      critical_rule: row.critical_rule
+    };
+  }
+
+  getCachedAtlasFrame(referenceModule: string, foldRadius: number): AtlasFrame | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM atlas_frames 
+      WHERE reference_module = ? AND fold_radius = ?
+      ORDER BY atlas_timestamp DESC
+      LIMIT 1
+    `);
+    const row = stmt.get(referenceModule, foldRadius) as AtlasFrameRow | undefined;
+    
+    if (!row) return null;
+
+    return {
+      atlas_frame_id: row.atlas_frame_id,
+      frame_id: row.frame_id,
+      atlas_timestamp: row.atlas_timestamp,
+      reference_module: row.reference_module,
+      fold_radius: row.fold_radius,
+      modules: JSON.parse(row.modules),
+      edges: JSON.parse(row.edges),
+      critical_rule: row.critical_rule
+    };
   }
 
   close() {

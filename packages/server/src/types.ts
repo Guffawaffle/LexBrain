@@ -10,7 +10,8 @@ export const ThoughtKind = z.enum([
   'gate_result',
   'artifact',
   'note',
-  'frame'
+  'frame',
+  'atlas_frame'
 ]);
 
 export type ThoughtKind = z.infer<typeof ThoughtKind>;
@@ -121,3 +122,37 @@ export const Frame = z.object({
 });
 
 export type Frame = z.infer<typeof Frame>;
+
+// Atlas Frame schema - represents module neighborhood snapshot
+export const AtlasFrameModule = z.object({
+  id: z.string(),
+  coordinates: z.object({
+    x: z.number(),
+    y: z.number()
+  }),
+  layer: z.enum(['presentation', 'application', 'domain', 'infrastructure'])
+});
+
+export type AtlasFrameModule = z.infer<typeof AtlasFrameModule>;
+
+export const AtlasFrameEdge = z.object({
+  from: z.string(),
+  to: z.string(),
+  allowed: z.boolean(),
+  rule: z.string().optional()
+});
+
+export type AtlasFrameEdge = z.infer<typeof AtlasFrameEdge>;
+
+export const AtlasFrame = z.object({
+  atlas_frame_id: z.string(),
+  frame_id: z.string(),
+  atlas_timestamp: z.string(),
+  reference_module: z.string(),
+  fold_radius: z.number().int().min(0).max(5),
+  modules: z.array(AtlasFrameModule),
+  edges: z.array(AtlasFrameEdge),
+  critical_rule: z.string()
+});
+
+export type AtlasFrame = z.infer<typeof AtlasFrame>;

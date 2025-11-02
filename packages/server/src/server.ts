@@ -116,6 +116,7 @@ app.get("/mcp/tools/list", (req, res) => {
               "artifact",
               "note",
               "frame",
+              "atlas_frame",
             ],
           },
           scope: {
@@ -158,6 +159,7 @@ app.get("/mcp/tools/list", (req, res) => {
               "artifact",
               "note",
               "frame",
+              "atlas_frame",
             ],
           },
           path: { type: "string" },
