@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lexbrain.dev/schemas/atlas-frame.schema.json",
+  "title": "Atlas Frame",
+  "description": "Structural snapshot of module neighborhood for Mind Palace recall",
+  "type": "object",
+  "required": [
+    "atlas_frame_id",
+    "frame_id",
+    "atlas_timestamp",
+    "reference_module",
+    "fold_radius",
+    "modules",
+    "edges",
+    "critical_rule"
+  ],
+  "properties": {
+    "atlas_frame_id": {
+      "type": "string",
+      "description": "Unique identifier for this Atlas Frame",
+      "pattern": "^atlas_[a-zA-Z0-9]+$",
+      "examples": ["atlas_xyz789", "atlas_abc123"]
+    },
+    "frame_id": {
+      "type": "string",
+      "description": "Parent Frame ID this Atlas Frame is linked to",
+      "pattern": "^frame_[a-zA-Z0-9]+$",
+      "examples": ["frame_abc123", "frame_xyz789"]
+    },
+    "atlas_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this Atlas Frame was generated (ISO 8601)",
+      "examples": ["2025-11-01T22:30:00Z", "2025-11-02T14:15:30.123Z"]
+    },
+    "reference_module": {
+      "type": "string",
+      "description": "Module at the center of this neighborhood (from module_scope[0])",
+      "examples": ["ui/user-admin-panel", "services/auth-core"]
+    },
+    "fold_radius": {
+      "type": "integer",
+      "description": "How many graph hops to expand from reference module (typically 1)",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 1,
+      "examples": [1, 2]
+    },
+    "modules": {
+      "type": "array",
+      "description": "Modules included in this Atlas Frame neighborhood",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "coordinates", "layer"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Canonical module ID from LexMap (must match lexmap.policy.json)",
+            "examples": ["ui/user-admin-panel", "services/user-access-api"]
+          },
+          "coordinates": {
+            "type": "object",
+            "description": "Spatial position for visual rendering and distance calculations",
+            "required": ["x", "y"],
+            "properties": {
+              "x": {
+                "type": "number",
+                "description": "X coordinate"
+              },
+              "y": {
+                "type": "number",
+                "description": "Y coordinate"
+              }
+            }
+          },
+          "layer": {
+            "type": "string",
+            "description": "Architecture layer this module belongs to",
+            "enum": ["presentation", "application", "domain", "infrastructure"],
+            "examples": ["presentation", "application"]
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Directed edges between modules with policy verdicts",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "allowed"],
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Source module ID (must exist in modules array)",
+            "examples": ["ui/user-admin-panel"]
+          },
+          "to": {
+            "type": "string",
+            "description": "Target module ID (must exist in modules array)",
+            "examples": ["services/user-access-api", "services/auth-core"]
+          },
+          "allowed": {
+            "type": "boolean",
+            "description": "Policy verdict: true = allowed edge, false = forbidden edge"
+          },
+          "rule": {
+            "type": "string",
+            "description": "Optional: which policy rule applies to this edge",
+            "examples": ["ui-must-use-service-layer", "no-direct-db-access"]
+          }
+        }
+      }
+    },
+    "critical_rule": {
+      "type": "string",
+      "description": "THE CRITICAL RULE text for reference",
+      "const": "THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap"
+    }
+  },
+  "examples": [
+    {
+      "atlas_frame_id": "atlas_xyz789",
+      "frame_id": "frame_abc123",
+      "atlas_timestamp": "2025-11-01T22:30:00Z",
+      "reference_module": "ui/user-admin-panel",
+      "fold_radius": 1,
+      "modules": [
+        {
+          "id": "ui/user-admin-panel",
+          "coordinates": {"x": 2, "y": 5},
+          "layer": "presentation"
+        },
+        {
+          "id": "services/user-access-api",
+          "coordinates": {"x": 5, "y": 5},
+          "layer": "application"
+        },
+        {
+          "id": "services/auth-core",
+          "coordinates": {"x": 8, "y": 3},
+          "layer": "domain"
+        }
+      ],
+      "edges": [
+        {
+          "from": "ui/user-admin-panel",
+          "to": "services/user-access-api",
+          "allowed": true,
+          "rule": "ui-must-use-service-layer"
+        },
+        {
+          "from": "ui/user-admin-panel",
+          "to": "services/auth-core",
+          "allowed": false,
+          "rule": "ui-must-use-service-layer"
+        }
+      ],
+      "critical_rule": "THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap"
+    }
+  ]
+}
