@@ -121,3 +121,53 @@ export const Frame = z.object({
 });
 
 export type Frame = z.infer<typeof Frame>;
+
+// Atlas Frame schema - structural snapshot of module neighborhood
+export const AtlasModule = z.object({
+  id: z.string(),
+  coordinates: z.object({
+    x: z.number(),
+    y: z.number()
+  }),
+  layer: z.enum(['presentation', 'application', 'domain', 'infrastructure'])
+});
+
+export type AtlasModule = z.infer<typeof AtlasModule>;
+
+export const AtlasEdge = z.object({
+  from: z.string(),
+  to: z.string(),
+  allowed: z.boolean(),
+  rule: z.string().optional()
+});
+
+export type AtlasEdge = z.infer<typeof AtlasEdge>;
+
+export const AtlasFrame = z.object({
+  atlas_frame_id: z.string(),
+  frame_id: z.string(),
+  atlas_timestamp: z.string(),
+  reference_module: z.string(),
+  fold_radius: z.number().int().min(0).max(5),
+  modules: z.array(AtlasModule),
+  edges: z.array(AtlasEdge),
+  critical_rule: z.string().optional()
+});
+
+export type AtlasFrame = z.infer<typeof AtlasFrame>;
+
+// Recall request and response schemas
+export const RecallRequest = z.object({
+  reference_point: z.string().optional(),
+  jira: z.string().optional(),
+  frame_id: z.string().optional()
+});
+
+export type RecallRequest = z.infer<typeof RecallRequest>;
+
+export const RecallResponse = z.object({
+  frame: Frame,
+  atlas_frame: AtlasFrame.optional()
+});
+
+export type RecallResponse = z.infer<typeof RecallResponse>;

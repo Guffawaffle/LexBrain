@@ -15,6 +15,7 @@ import {
   LockRequest,
   UnlockRequest,
   ThoughtFact,
+  RecallRequest,
 } from "./types.js";
 
 // Environment configuration
@@ -184,6 +185,27 @@ app.get("/mcp/tools/list", (req, res) => {
         properties: { name: { type: "string" } },
       },
     },
+    {
+      name: "thought.recall",
+      description: "Recall work context by reference point, returning Frame + Atlas Frame",
+      input_schema: {
+        type: "object",
+        properties: {
+          reference_point: {
+            type: "string",
+            description: "Human-memorable anchor phrase (fuzzy matched)"
+          },
+          jira: {
+            type: "string",
+            description: "Alternative: recall by ticket ID"
+          },
+          frame_id: {
+            type: "string",
+            description: "Alternative: recall specific Frame by ID"
+          }
+        },
+      },
+    },
   ];
 
   res.json({ tools });
@@ -306,6 +328,57 @@ app.post("/mcp/tools/call", async (req, res) => {
         const body = UnlockRequest.parse(args);
         const ok = db.releaseLock(body.name);
         return res.json({ ok });
+      }
+
+      case "thought.recall": {
+        const query = RecallRequest.parse(args);
+        
+        // Validate that at least one query parameter is provided
+        if (!query.reference_point && !query.jira && !query.frame_id) {
+          return res.status(400).json({ 
+            error: "At least one of reference_point, jira, or frame_id must be provided" 
+          });
+        }
+
+        let frame = null;
+
+        // Priority: frame_id > reference_point > jira
+        if (query.frame_id) {
+          frame = db.getFrameById(query.frame_id);
+        } else if (query.reference_point) {
+          // Use FTS fuzzy search on reference_point
+          const frames = db.searchFrames({ 
+            reference_point: query.reference_point,
+            limit: 1
+          });
+          frame = frames.length > 0 ? frames[0] : null;
+        } else if (query.jira) {
+          // Search by JIRA ticket
+          const frames = db.searchFrames({ 
+            jira: query.jira,
+            limit: 1
+          });
+          frame = frames.length > 0 ? frames[0] : null;
+        }
+
+        if (!frame) {
+          return res.status(404).json({ 
+            error: "No matching Frame found" 
+          });
+        }
+
+        // Fetch linked Atlas Frame if exists
+        let atlasFrame = null;
+        if (frame.atlas_frame_id) {
+          atlasFrame = db.getAtlasFrameById(frame.atlas_frame_id);
+        }
+
+        return res.json({ 
+          content: {
+            frame,
+            atlas_frame: atlasFrame
+          }
+        });
       }
 
       default:
@@ -493,6 +566,64 @@ app.post("/unlock", async (req, res) => {
     res.json({ ok: released });
   } catch (error) {
     console.error("UNLOCK error:", error);
+    if (error instanceof Error && error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid request format" });
+    }
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /recall - Recall work context by reference point
+app.post("/recall", async (req, res) => {
+  try {
+    const query = RecallRequest.parse(req.body);
+
+    // Validate that at least one query parameter is provided
+    if (!query.reference_point && !query.jira && !query.frame_id) {
+      return res.status(400).json({
+        error: "At least one of reference_point, jira, or frame_id must be provided",
+      });
+    }
+
+    let frame = null;
+
+    // Priority: frame_id > reference_point > jira
+    if (query.frame_id) {
+      frame = db.getFrameById(query.frame_id);
+    } else if (query.reference_point) {
+      // Use FTS fuzzy search on reference_point
+      const frames = db.searchFrames({
+        reference_point: query.reference_point,
+        limit: 1,
+      });
+      frame = frames.length > 0 ? frames[0] : null;
+    } else if (query.jira) {
+      // Search by JIRA ticket
+      const frames = db.searchFrames({
+        jira: query.jira,
+        limit: 1,
+      });
+      frame = frames.length > 0 ? frames[0] : null;
+    }
+
+    if (!frame) {
+      return res.status(404).json({
+        error: "No matching Frame found",
+      });
+    }
+
+    // Fetch linked Atlas Frame if exists
+    let atlasFrame = null;
+    if (frame.atlas_frame_id) {
+      atlasFrame = db.getAtlasFrameById(frame.atlas_frame_id);
+    }
+
+    res.json({
+      frame,
+      atlas_frame: atlasFrame,
+    });
+  } catch (error) {
+    console.error("RECALL error:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return res.status(400).json({ error: "Invalid request format" });
     }

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ThoughtFact, Frame } from './types.js';
+import { ThoughtFact, Frame, AtlasFrame } from './types.js';
 
 export interface DbRow {
   fact_id: string;
@@ -27,6 +27,16 @@ export interface FrameRow {
   status_snapshot: string;
   keywords: string | null;
   atlas_frame_id: string | null;
+}
+
+export interface AtlasFrameRow {
+  atlas_frame_id: string;
+  frame_id: string;
+  atlas_timestamp: string;
+  reference_module: string;
+  fold_radius: number;
+  atlas_json: string;
+  created_at: string;
 }
 
 export class DbManager {
@@ -83,6 +93,19 @@ export class DbManager {
       );
     `);
 
+    // Create atlas_frames table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS atlas_frames (
+        atlas_frame_id TEXT PRIMARY KEY,
+        frame_id TEXT NOT NULL,
+        atlas_timestamp TEXT NOT NULL,
+        reference_module TEXT NOT NULL,
+        fold_radius INTEGER NOT NULL,
+        atlas_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `);
+
     // Create indexes for performance
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_facts_rc
@@ -112,6 +135,17 @@ export class DbManager {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_frames_jira
       ON frames(jira);
+    `);
+
+    // Create indexes for atlas_frames table
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_atlas_frames_frame_id
+      ON atlas_frames(frame_id);
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_atlas_frames_timestamp
+      ON atlas_frames(atlas_timestamp);
     `);
 
     // Create FTS5 virtual table for fuzzy search on reference_point
@@ -362,5 +396,48 @@ export class DbManager {
       totalFacts: factsCount.count,
       totalLocks: locksCount.count
     };
+  }
+
+  insertAtlasFrame(atlasFrame: AtlasFrame): boolean {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO atlas_frames (
+        atlas_frame_id, frame_id, atlas_timestamp, reference_module,
+        fold_radius, atlas_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      atlasFrame.atlas_frame_id,
+      atlasFrame.frame_id,
+      atlasFrame.atlas_timestamp,
+      atlasFrame.reference_module,
+      atlasFrame.fold_radius,
+      JSON.stringify(atlasFrame),
+      new Date().toISOString()
+    );
+
+    return result.changes > 0;
+  }
+
+  getAtlasFrameById(atlasFrameId: string): AtlasFrame | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM atlas_frames WHERE atlas_frame_id = ?
+    `);
+    const row = stmt.get(atlasFrameId) as AtlasFrameRow | undefined;
+    
+    if (!row) return null;
+
+    return JSON.parse(row.atlas_json) as AtlasFrame;
+  }
+
+  getAtlasFrameByFrameId(frameId: string): AtlasFrame | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM atlas_frames WHERE frame_id = ?
+    `);
+    const row = stmt.get(frameId) as AtlasFrameRow | undefined;
+    
+    if (!row) return null;
+
+    return JSON.parse(row.atlas_json) as AtlasFrame;
   }
 }

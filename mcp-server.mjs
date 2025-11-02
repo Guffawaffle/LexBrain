@@ -74,6 +74,61 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_facts_rc ON facts(repo, "commit", kind);
   CREATE INDEX IF NOT EXISTS idx_facts_path ON facts(repo, "commit", path);
+  
+  CREATE TABLE IF NOT EXISTS frames (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    jira TEXT,
+    module_scope TEXT NOT NULL,
+    summary_caption TEXT NOT NULL,
+    reference_point TEXT NOT NULL,
+    status_snapshot TEXT NOT NULL,
+    keywords TEXT,
+    atlas_frame_id TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_frames_timestamp ON frames(timestamp);
+  CREATE INDEX IF NOT EXISTS idx_frames_branch ON frames(branch);
+  CREATE INDEX IF NOT EXISTS idx_frames_jira ON frames(jira);
+  
+  CREATE VIRTUAL TABLE IF NOT EXISTS frames_fts USING fts5(
+    id UNINDEXED,
+    reference_point,
+    summary_caption,
+    keywords,
+    content=frames,
+    content_rowid=rowid
+  );
+  
+  CREATE TRIGGER IF NOT EXISTS frames_ai AFTER INSERT ON frames BEGIN
+    INSERT INTO frames_fts(rowid, id, reference_point, summary_caption, keywords)
+    VALUES (new.rowid, new.id, new.reference_point, new.summary_caption, new.keywords);
+  END;
+  
+  CREATE TRIGGER IF NOT EXISTS frames_ad AFTER DELETE ON frames BEGIN
+    INSERT INTO frames_fts(frames_fts, rowid, id, reference_point, summary_caption, keywords)
+    VALUES('delete', old.rowid, old.id, old.reference_point, old.summary_caption, old.keywords);
+  END;
+  
+  CREATE TRIGGER IF NOT EXISTS frames_au AFTER UPDATE ON frames BEGIN
+    INSERT INTO frames_fts(frames_fts, rowid, id, reference_point, summary_caption, keywords)
+    VALUES('delete', old.rowid, old.id, old.reference_point, old.summary_caption, old.keywords);
+    INSERT INTO frames_fts(rowid, id, reference_point, summary_caption, keywords)
+    VALUES (new.rowid, new.id, new.reference_point, new.summary_caption, new.keywords);
+  END;
+  
+  CREATE TABLE IF NOT EXISTS atlas_frames (
+    atlas_frame_id TEXT PRIMARY KEY,
+    frame_id TEXT NOT NULL,
+    atlas_timestamp TEXT NOT NULL,
+    reference_module TEXT NOT NULL,
+    fold_radius INTEGER NOT NULL,
+    atlas_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_atlas_frames_frame_id ON atlas_frames(frame_id);
+  CREATE INDEX IF NOT EXISTS idx_atlas_frames_timestamp ON atlas_frames(atlas_timestamp);
+  
   CREATE TABLE IF NOT EXISTS locks (
     name TEXT PRIMARY KEY
   );
@@ -343,6 +398,127 @@ const tools = {
           {
             type: "text",
             text: `Lock "${args.name}": ${ok ? "RELEASED" : "NOT FOUND"}`,
+          },
+        ],
+      };
+    },
+  },
+
+  thought_recall: {
+    description: "Recall work context by reference point, returning Frame + Atlas Frame",
+    inputSchema: {
+      type: "object",
+      properties: {
+        reference_point: {
+          type: "string",
+          description: "Human-memorable anchor phrase (fuzzy matched)"
+        },
+        jira: {
+          type: "string",
+          description: "Alternative: recall by ticket ID"
+        },
+        frame_id: {
+          type: "string",
+          description: "Alternative: recall specific Frame by ID"
+        }
+      },
+    },
+    call: async (args) => {
+      // Validate that at least one query parameter is provided
+      if (!args.reference_point && !args.jira && !args.frame_id) {
+        throw new Error("At least one of reference_point, jira, or frame_id must be provided");
+      }
+
+      let frame = null;
+      let sql, params;
+
+      // Priority: frame_id > reference_point > jira
+      if (args.frame_id) {
+        sql = "SELECT * FROM frames WHERE id = ?";
+        params = [args.frame_id];
+        const row = db.prepare(sql).get(...params);
+        if (row) {
+          frame = {
+            id: row.id,
+            timestamp: row.timestamp,
+            branch: row.branch,
+            jira: row.jira || undefined,
+            module_scope: JSON.parse(row.module_scope),
+            summary_caption: row.summary_caption,
+            reference_point: row.reference_point,
+            status_snapshot: JSON.parse(row.status_snapshot),
+            keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
+            atlas_frame_id: row.atlas_frame_id || undefined
+          };
+        }
+      } else if (args.reference_point) {
+        // Use FTS fuzzy search on reference_point
+        sql = `
+          SELECT frames.* FROM frames
+          INNER JOIN frames_fts ON frames.rowid = frames_fts.rowid
+          WHERE frames_fts MATCH ?
+          ORDER BY frames.timestamp DESC
+          LIMIT 1
+        `;
+        params = [args.reference_point];
+        const row = db.prepare(sql).get(...params);
+        if (row) {
+          frame = {
+            id: row.id,
+            timestamp: row.timestamp,
+            branch: row.branch,
+            jira: row.jira || undefined,
+            module_scope: JSON.parse(row.module_scope),
+            summary_caption: row.summary_caption,
+            reference_point: row.reference_point,
+            status_snapshot: JSON.parse(row.status_snapshot),
+            keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
+            atlas_frame_id: row.atlas_frame_id || undefined
+          };
+        }
+      } else if (args.jira) {
+        // Search by JIRA ticket
+        sql = "SELECT * FROM frames WHERE jira = ? ORDER BY timestamp DESC LIMIT 1";
+        params = [args.jira];
+        const row = db.prepare(sql).get(...params);
+        if (row) {
+          frame = {
+            id: row.id,
+            timestamp: row.timestamp,
+            branch: row.branch,
+            jira: row.jira || undefined,
+            module_scope: JSON.parse(row.module_scope),
+            summary_caption: row.summary_caption,
+            reference_point: row.reference_point,
+            status_snapshot: JSON.parse(row.status_snapshot),
+            keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
+            atlas_frame_id: row.atlas_frame_id || undefined
+          };
+        }
+      }
+
+      if (!frame) {
+        throw new Error("No matching Frame found");
+      }
+
+      // Fetch linked Atlas Frame if exists
+      let atlasFrame = null;
+      if (frame.atlas_frame_id) {
+        const atlasStmt = db.prepare("SELECT * FROM atlas_frames WHERE atlas_frame_id = ?");
+        const atlasRow = atlasStmt.get(frame.atlas_frame_id);
+        if (atlasRow) {
+          atlasFrame = JSON.parse(atlasRow.atlas_json);
+        }
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              frame,
+              atlas_frame: atlasFrame
+            }, null, 2),
           },
         ],
       };
