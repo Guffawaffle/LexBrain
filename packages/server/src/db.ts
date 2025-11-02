@@ -427,7 +427,12 @@ export class DbManager {
     
     if (!row) return null;
 
-    return JSON.parse(row.atlas_json) as AtlasFrame;
+    try {
+      return JSON.parse(row.atlas_json) as AtlasFrame;
+    } catch (error) {
+      console.error(`Failed to parse atlas_json for ${atlasFrameId}:`, error);
+      return null;
+    }
   }
 
   getAtlasFrameByFrameId(frameId: string): AtlasFrame | null {
@@ -438,6 +443,53 @@ export class DbManager {
     
     if (!row) return null;
 
-    return JSON.parse(row.atlas_json) as AtlasFrame;
+    try {
+      return JSON.parse(row.atlas_json) as AtlasFrame;
+    } catch (error) {
+      console.error(`Failed to parse atlas_json for frame ${frameId}:`, error);
+      return null;
+    }
+  }
+
+  recallFrame(query: {
+    reference_point?: string;
+    jira?: string;
+    frame_id?: string;
+  }): { frame: Frame; atlas_frame: AtlasFrame | null } | null {
+    let frame = null;
+
+    // Priority: frame_id > reference_point > jira
+    if (query.frame_id) {
+      frame = this.getFrameById(query.frame_id);
+    } else if (query.reference_point) {
+      // Use FTS fuzzy search on reference_point
+      const frames = this.searchFrames({
+        reference_point: query.reference_point,
+        limit: 1,
+      });
+      frame = frames.length > 0 ? frames[0] : null;
+    } else if (query.jira) {
+      // Search by JIRA ticket
+      const frames = this.searchFrames({
+        jira: query.jira,
+        limit: 1,
+      });
+      frame = frames.length > 0 ? frames[0] : null;
+    }
+
+    if (!frame) {
+      return null;
+    }
+
+    // Fetch linked Atlas Frame if exists
+    let atlasFrame = null;
+    if (frame.atlas_frame_id) {
+      atlasFrame = this.getAtlasFrameById(frame.atlas_frame_id);
+    }
+
+    return {
+      frame,
+      atlas_frame: atlasFrame,
+    };
   }
 }

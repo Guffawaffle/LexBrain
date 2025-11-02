@@ -340,44 +340,16 @@ app.post("/mcp/tools/call", async (req, res) => {
           });
         }
 
-        let frame = null;
+        const result = db.recallFrame(query);
 
-        // Priority: frame_id > reference_point > jira
-        if (query.frame_id) {
-          frame = db.getFrameById(query.frame_id);
-        } else if (query.reference_point) {
-          // Use FTS fuzzy search on reference_point
-          const frames = db.searchFrames({ 
-            reference_point: query.reference_point,
-            limit: 1
-          });
-          frame = frames.length > 0 ? frames[0] : null;
-        } else if (query.jira) {
-          // Search by JIRA ticket
-          const frames = db.searchFrames({ 
-            jira: query.jira,
-            limit: 1
-          });
-          frame = frames.length > 0 ? frames[0] : null;
-        }
-
-        if (!frame) {
+        if (!result) {
           return res.status(404).json({ 
             error: "No matching Frame found" 
           });
         }
 
-        // Fetch linked Atlas Frame if exists
-        let atlasFrame = null;
-        if (frame.atlas_frame_id) {
-          atlasFrame = db.getAtlasFrameById(frame.atlas_frame_id);
-        }
-
         return res.json({ 
-          content: {
-            frame,
-            atlas_frame: atlasFrame
-          }
+          content: result
         });
       }
 
@@ -585,43 +557,15 @@ app.post("/recall", async (req, res) => {
       });
     }
 
-    let frame = null;
+    const result = db.recallFrame(query);
 
-    // Priority: frame_id > reference_point > jira
-    if (query.frame_id) {
-      frame = db.getFrameById(query.frame_id);
-    } else if (query.reference_point) {
-      // Use FTS fuzzy search on reference_point
-      const frames = db.searchFrames({
-        reference_point: query.reference_point,
-        limit: 1,
-      });
-      frame = frames.length > 0 ? frames[0] : null;
-    } else if (query.jira) {
-      // Search by JIRA ticket
-      const frames = db.searchFrames({
-        jira: query.jira,
-        limit: 1,
-      });
-      frame = frames.length > 0 ? frames[0] : null;
-    }
-
-    if (!frame) {
+    if (!result) {
       return res.status(404).json({
         error: "No matching Frame found",
       });
     }
 
-    // Fetch linked Atlas Frame if exists
-    let atlasFrame = null;
-    if (frame.atlas_frame_id) {
-      atlasFrame = db.getAtlasFrameById(frame.atlas_frame_id);
-    }
-
-    res.json({
-      frame,
-      atlas_frame: atlasFrame,
-    });
+    res.json(result);
   } catch (error) {
     console.error("RECALL error:", error);
     if (error instanceof Error && error.name === "ZodError") {

@@ -429,16 +429,10 @@ const tools = {
         throw new Error("At least one of reference_point, jira, or frame_id must be provided");
       }
 
-      let frame = null;
-      let sql, params;
-
-      // Priority: frame_id > reference_point > jira
-      if (args.frame_id) {
-        sql = "SELECT * FROM frames WHERE id = ?";
-        params = [args.frame_id];
-        const row = db.prepare(sql).get(...params);
-        if (row) {
-          frame = {
+      // Helper function to construct Frame from database row
+      function constructFrame(row) {
+        try {
+          return {
             id: row.id,
             timestamp: row.timestamp,
             branch: row.branch,
@@ -450,6 +444,22 @@ const tools = {
             keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
             atlas_frame_id: row.atlas_frame_id || undefined
           };
+        } catch (error) {
+          console.error(`[LexBrain] Failed to parse frame data for ${row.id}:`, error.message);
+          return null;
+        }
+      }
+
+      let frame = null;
+      let sql, params;
+
+      // Priority: frame_id > reference_point > jira
+      if (args.frame_id) {
+        sql = "SELECT * FROM frames WHERE id = ?";
+        params = [args.frame_id];
+        const row = db.prepare(sql).get(...params);
+        if (row) {
+          frame = constructFrame(row);
         }
       } else if (args.reference_point) {
         // Use FTS fuzzy search on reference_point
@@ -463,18 +473,7 @@ const tools = {
         params = [args.reference_point];
         const row = db.prepare(sql).get(...params);
         if (row) {
-          frame = {
-            id: row.id,
-            timestamp: row.timestamp,
-            branch: row.branch,
-            jira: row.jira || undefined,
-            module_scope: JSON.parse(row.module_scope),
-            summary_caption: row.summary_caption,
-            reference_point: row.reference_point,
-            status_snapshot: JSON.parse(row.status_snapshot),
-            keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
-            atlas_frame_id: row.atlas_frame_id || undefined
-          };
+          frame = constructFrame(row);
         }
       } else if (args.jira) {
         // Search by JIRA ticket
@@ -482,18 +481,7 @@ const tools = {
         params = [args.jira];
         const row = db.prepare(sql).get(...params);
         if (row) {
-          frame = {
-            id: row.id,
-            timestamp: row.timestamp,
-            branch: row.branch,
-            jira: row.jira || undefined,
-            module_scope: JSON.parse(row.module_scope),
-            summary_caption: row.summary_caption,
-            reference_point: row.reference_point,
-            status_snapshot: JSON.parse(row.status_snapshot),
-            keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
-            atlas_frame_id: row.atlas_frame_id || undefined
-          };
+          frame = constructFrame(row);
         }
       }
 
@@ -504,10 +492,15 @@ const tools = {
       // Fetch linked Atlas Frame if exists
       let atlasFrame = null;
       if (frame.atlas_frame_id) {
-        const atlasStmt = db.prepare("SELECT * FROM atlas_frames WHERE atlas_frame_id = ?");
-        const atlasRow = atlasStmt.get(frame.atlas_frame_id);
-        if (atlasRow) {
-          atlasFrame = JSON.parse(atlasRow.atlas_json);
+        try {
+          const atlasStmt = db.prepare("SELECT * FROM atlas_frames WHERE atlas_frame_id = ?");
+          const atlasRow = atlasStmt.get(frame.atlas_frame_id);
+          if (atlasRow) {
+            atlasFrame = JSON.parse(atlasRow.atlas_json);
+          }
+        } catch (error) {
+          console.error(`[LexBrain] Failed to parse atlas frame ${frame.atlas_frame_id}:`, error.message);
+          // Continue without atlas frame
         }
       }
 
