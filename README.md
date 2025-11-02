@@ -218,10 +218,16 @@ LexBrain is:
 
 - [Overview](./docs/OVERVIEW.md) — the pain, the solution, the moat
 - [Policy Documentation](./docs/POLICY.md) — LexMap policy schema and spatial coordinates
+- [Mind Palace Guide](./docs/MIND_PALACE.md) — reference points and Atlas Frames for natural recall
 - [Adoption Guide](./docs/ADOPTION_GUIDE.md) — how to roll out LexBrain in phases
 - [Architecture Loop](./docs/ARCHITECTURE_LOOP.md) — the full explainability story
 - [FAQ](./docs/FAQ.md) — privacy, security, compliance
 - [Contributing](./CONTRIBUTING.md) — how to extend LexBrain safely
+
+### Technical Documentation
+
+- [Mind Palace Architecture](./docs/MIND_PALACE_ARCHITECTURE.md) — implementation details for developers
+- [Schema Documentation](./docs/schemas/README.md) — Frame and Atlas Frame schemas
 
 ---
 

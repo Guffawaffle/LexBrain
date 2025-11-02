@@ -155,6 +155,53 @@ All of these return the most recent matching Frame.
 
 ---
 
+## What is Mind Palace?
+
+**Mind Palace** is an optional enhancement that adds **reference points** and **Atlas Frames** to LexBrain.
+
+Instead of searching by ticket ID or keyword, you recall by natural phrasing:
+
+```bash
+/recall "Add User button"
+```
+
+Or just ask your assistant:
+
+> "Where did I leave off with the Add User button?"
+
+**What you get back:**
+1. **Frame metadata** - what you were doing, next action, blockers
+2. **Atlas Frame** - visual map of relevant modules and policy boundaries
+
+**Key benefits:**
+- **Faster recall** - jump directly to context via human-memorable anchor phrases
+- **Reduced tokens** - only unfold the module neighborhood that matters (fold radius)
+- **Policy-aware reasoning** - see which edges are allowed/forbidden
+
+See [Mind Palace Guide](./MIND_PALACE.md) for details.
+
+---
+
+## Do I need Mind Palace?
+
+**No, it's optional.**
+
+You can use LexBrain without Mind Palace and still get full continuity:
+- Capture Frames with `/remember`
+- Recall by ticket ID or keyword
+- Get instant context on what you were doing
+
+Mind Palace adds:
+- **Reference points** - human-memorable anchors instead of ticket IDs
+- **Atlas Frames** - structural context (module neighborhoods + policy boundaries)
+- **Fold radius** - controlled context expansion to prevent token bloat
+
+If you want natural recall ("Where did I leave off with X?") and policy-aware structural context, use Mind Palace.
+
+If you just want "what was I doing on TICKET-123?", baseline LexBrain is enough.
+
+---
+
 ## How many Frames should I capture per day?
 
 **5–10, max.**

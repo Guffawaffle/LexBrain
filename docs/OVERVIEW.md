@@ -276,6 +276,7 @@ The memory card renderer doesn't have to be pretty; it has to be legible and con
 ## Next Steps
 
 - Read the [Adoption Guide](./ADOPTION_GUIDE.md) to roll out LexBrain in phases
+- Read the [Mind Palace Guide](./MIND_PALACE.md) to learn about reference points and Atlas Frames
 - Read the [Architecture Loop](./ARCHITECTURE_LOOP.md) to understand the full explainability story
 - Read the [FAQ](./FAQ.md) for privacy, security, and compliance questions
 - Read [Contributing](../CONTRIBUTING.md) to extend LexBrain safely
