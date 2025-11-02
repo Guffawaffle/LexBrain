@@ -62,6 +62,8 @@ That's it! The MCP server handles everything - database initialization, storage,
 
 - **thought_put**: Store facts in the knowledge base
 - **thought_get**: Query facts from the knowledge base
+- **thought_put_atlas_frame**: Store Atlas Frame data for a work Frame with caching
+- **thought_get_atlas_frame**: Retrieve Atlas Frame by ID, frame ID, or cached by reference module
 - **thought_lock**: Acquire advisory locks
 - **thought_unlock**: Release advisory locks
 
@@ -178,6 +180,92 @@ Release an advisory lock.
 }
 ```
 
+### thought.put_atlas_frame
+
+Store an Atlas Frame for a work Frame with caching support.
+
+**Input:**
+```json
+{
+  "atlas_frame_id": "atlas_xyz789",
+  "frame_id": "frame_abc123",
+  "atlas_timestamp": "2025-11-01T22:30:00Z",
+  "reference_module": "ui/user-admin-panel",
+  "fold_radius": 1,
+  "modules": [
+    {
+      "id": "ui/user-admin-panel",
+      "coordinates": {"x": 2, "y": 5},
+      "layer": "presentation"
+    },
+    {
+      "id": "services/user-access-api",
+      "coordinates": {"x": 5, "y": 5},
+      "layer": "application"
+    }
+  ],
+  "edges": [
+    {
+      "from": "ui/user-admin-panel",
+      "to": "services/user-access-api",
+      "allowed": true,
+      "rule": "ui-must-use-service-layer"
+    }
+  ],
+  "critical_rule": "THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap"
+}
+```
+
+**Output:**
+```json
+{
+  "atlas_frame_id": "atlas_xyz789",
+  "inserted": true
+}
+```
+
+### thought.get_atlas_frame
+
+Retrieve an Atlas Frame by ID, frame ID, or from cache by reference module and fold radius.
+
+**Input (by atlas_frame_id):**
+```json
+{
+  "atlas_frame_id": "atlas_xyz789"
+}
+```
+
+**Input (by frame_id):**
+```json
+{
+  "frame_id": "frame_abc123"
+}
+```
+
+**Input (cached by reference_module and fold_radius):**
+```json
+{
+  "reference_module": "ui/user-admin-panel",
+  "fold_radius": 1
+}
+```
+
+**Output:**
+```json
+{
+  "content": {
+    "atlas_frame_id": "atlas_xyz789",
+    "frame_id": "frame_abc123",
+    "atlas_timestamp": "2025-11-01T22:30:00Z",
+    "reference_module": "ui/user-admin-panel",
+    "fold_radius": 1,
+    "modules": [...],
+    "edges": [...],
+    "critical_rule": "..."
+  }
+}
+```
+
 ## Architecture
 
 ```
@@ -226,6 +314,22 @@ Claude will automatically translate this to:
 ```
 Acquire a lock named "analysis-in-progress" before starting analysis,
 then release it when complete.
+```
+
+### Store and retrieve Atlas Frames
+
+Store an Atlas Frame when creating a work Frame:
+
+```
+Store an Atlas Frame for frame_abc123 with reference module "ui/user-admin-panel" 
+at fold radius 1, including modules and their allowed/forbidden edges.
+```
+
+Retrieve a cached Atlas Frame by module and radius:
+
+```
+Get the cached Atlas Frame for reference module "ui/user-admin-panel" 
+with fold radius 1 to see the module neighborhood.
 ```
 
 ## Performance
