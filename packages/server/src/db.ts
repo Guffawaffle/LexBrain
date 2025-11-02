@@ -16,6 +16,19 @@ export interface DbRow {
   refs: string | null;
 }
 
+export interface FrameRow {
+  id: string;
+  timestamp: string;
+  branch: string;
+  jira: string | null;
+  module_scope: string;
+  summary_caption: string;
+  reference_point: string;
+  status_snapshot: string;
+  keywords: string | null;
+  atlas_frame_id: string | null;
+}
+
 export class DbManager {
   private db: Database.Database;
 
@@ -247,7 +260,7 @@ export class DbManager {
     const stmt = this.db.prepare(`
       SELECT * FROM frames WHERE id = ?
     `);
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as FrameRow | undefined;
     
     if (!row) return null;
 
@@ -271,8 +284,9 @@ export class DbManager {
     branch?: string;
     limit?: number;
   }): Frame[] {
-    let sql = 'SELECT * FROM frames WHERE 1=1';
+    let sql: string;
     const params: any[] = [];
+    const conditions: string[] = [];
 
     // Use FTS for fuzzy search on reference_point
     if (query.reference_point) {
@@ -282,7 +296,25 @@ export class DbManager {
         WHERE frames_fts MATCH ?
       `;
       params.push(query.reference_point);
+
+      // Add additional filters for jira and branch if provided
+      if (query.jira) {
+        conditions.push('frames.jira = ?');
+        params.push(query.jira);
+      }
+
+      if (query.branch) {
+        conditions.push('frames.branch = ?');
+        params.push(query.branch);
+      }
+
+      if (conditions.length > 0) {
+        sql += ' AND ' + conditions.join(' AND ');
+      }
     } else {
+      // Standard query without FTS
+      sql = 'SELECT * FROM frames WHERE 1=1';
+
       if (query.jira) {
         sql += ' AND jira = ?';
         params.push(query.jira);
@@ -302,7 +334,7 @@ export class DbManager {
     }
 
     const stmt = this.db.prepare(sql);
-    const rows = stmt.all(...params) as any[];
+    const rows = stmt.all(...params) as FrameRow[];
 
     return rows.map(row => ({
       id: row.id,
