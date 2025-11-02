@@ -1,0 +1,22 @@
+[Unit]
+Description=LexBrain - Deterministic Knowledge Storage System
+After=network.target
+
+[Service]
+Type=simple
+User=guff
+WorkingDirectory=/srv/lex-brain
+Environment="NODE_ENV=production"
+Environment="PORT=6901"
+Environment="LEXBRAIN_DB=/srv/lex-brain/thoughts.db"
+Environment="LEXBRAIN_MODE=local"
+Environment="PATH=/home/guff/.nvm/versions/node/v22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/guff/.nvm/versions/node/v22.20.0/bin/pnpm --filter lexbrain-server start
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lexbrain
+
+[Install]
+WantedBy=multi-user.target

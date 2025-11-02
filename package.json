@@ -1,0 +1,40 @@
+{
+  "name": "lexbrain-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Deterministic knowledge storage MCP server",
+  "private": false,
+  "workspaces": [
+    "packages/*"
+  ],
+  "bin": {
+    "lexbrain-mcp": "./mcp-server.mjs"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter lexbrain-server dev",
+    "smoke": "pnpm --filter lexbrain-server smoke",
+    "mcp": "node mcp-server.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "knowledge-graph",
+    "memory",
+    "sqlite"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Guffawaffle/LexBrain.git"
+  }
+}

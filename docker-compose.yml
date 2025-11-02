@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  lexbrain:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    ports:
+      - "6901:6901"
+    volumes:
+      - ./data:/data
+    environment:
+      - LEXBRAIN_DB=/data/thoughts.db
+      - LEXBRAIN_MODE=zk
+      - LEXBRAIN_KEY_HEX=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - LEXBRAIN_TTL_DAYS=7
+      - LEXBRAIN_MAX_PAYLOAD_KB=256
+      - PORT=6901
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6901/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped

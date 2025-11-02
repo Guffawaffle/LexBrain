@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "lexbrain": {
+      "command": "node",
+      "args": ["/srv/lex-mcp/lex-brain/mcp-server.mjs"],
+      "env": {
+        "LEXBRAIN_DB": "/srv/lex-mcp/lex-brain/thoughts.db",
+        "LEXBRAIN_MODE": "local"
+      }
+    }
+  }
+}
