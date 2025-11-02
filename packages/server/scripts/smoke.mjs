@@ -250,6 +250,104 @@ async function runTests() {
     console.log('✓ MCP unlock:', mcpUnlock);
     if (!mcpUnlock.ok) throw new Error('MCP unlock should be ok');
 
+    // --- Atlas Frame tests ---
+    console.log('\nRunning Atlas Frame smoke...');
+
+    // Test 1: Store an Atlas Frame
+    const atlasFrameId = 'atlas_test_' + Date.now();
+    const frameId = 'frame_test_' + Date.now();
+    const atlasFrameData = {
+      atlas_frame_id: atlasFrameId,
+      frame_id: frameId,
+      atlas_timestamp: new Date().toISOString(),
+      reference_module: 'ui/user-admin-panel',
+      fold_radius: 1,
+      modules: [
+        {
+          id: 'ui/user-admin-panel',
+          coordinates: { x: 2, y: 5 },
+          layer: 'presentation'
+        },
+        {
+          id: 'services/user-access-api',
+          coordinates: { x: 5, y: 5 },
+          layer: 'application'
+        }
+      ],
+      edges: [
+        {
+          from: 'ui/user-admin-panel',
+          to: 'services/user-access-api',
+          allowed: true,
+          rule: 'ui-must-use-service-layer'
+        }
+      ],
+      critical_rule: 'THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap'
+    };
+
+    const putAtlasResp = await fetch('http://localhost:8124/mcp/tools/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'thought.put_atlas_frame',
+        arguments: atlasFrameData
+      })
+    });
+    if (!putAtlasResp.ok) throw new Error('MCP thought.put_atlas_frame failed');
+    const putAtlas = await putAtlasResp.json();
+    console.log('✓ MCP put_atlas_frame:', putAtlas);
+    if (!putAtlas.atlas_frame_id || putAtlas.inserted !== true) {
+      throw new Error('put_atlas_frame should return atlas_frame_id and inserted=true');
+    }
+
+    // Test 2: Get Atlas Frame by ID
+    const getAtlasByIdResp = await fetch('http://localhost:8124/mcp/tools/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'thought.get_atlas_frame',
+        arguments: { atlas_frame_id: atlasFrameId }
+      })
+    });
+    if (!getAtlasByIdResp.ok) throw new Error('MCP thought.get_atlas_frame by ID failed');
+    const getAtlasById = await getAtlasByIdResp.json();
+    console.log('✓ MCP get_atlas_frame by ID:', getAtlasById.content ? 'found' : 'not found');
+    if (!getAtlasById.content) {
+      throw new Error('get_atlas_frame by ID should return the Atlas Frame');
+    }
+
+    // Test 3: Get Atlas Frame by frame_id
+    const getAtlasByFrameResp = await fetch('http://localhost:8124/mcp/tools/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'thought.get_atlas_frame',
+        arguments: { frame_id: frameId }
+      })
+    });
+    if (!getAtlasByFrameResp.ok) throw new Error('MCP thought.get_atlas_frame by frame_id failed');
+    const getAtlasByFrame = await getAtlasByFrameResp.json();
+    console.log('✓ MCP get_atlas_frame by frame_id:', getAtlasByFrame.content ? 'found' : 'not found');
+    if (!getAtlasByFrame.content) {
+      throw new Error('get_atlas_frame by frame_id should return the Atlas Frame');
+    }
+
+    // Test 4: Get cached Atlas Frame by reference_module and fold_radius
+    const getCachedResp = await fetch('http://localhost:8124/mcp/tools/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'thought.get_atlas_frame',
+        arguments: { reference_module: 'ui/user-admin-panel', fold_radius: 1 }
+      })
+    });
+    if (!getCachedResp.ok) throw new Error('MCP thought.get_atlas_frame cached failed');
+    const getCached = await getCachedResp.json();
+    console.log('✓ MCP get_atlas_frame cached:', getCached.content ? 'cache hit' : 'cache miss');
+    if (!getCached.content) {
+      throw new Error('get_atlas_frame cached should return the Atlas Frame (cache hit)');
+    }
+
     console.log('\n🎉 All smoke tests passed!');
 
   } catch (error) {

@@ -15,6 +15,7 @@ import {
   LockRequest,
   UnlockRequest,
   ThoughtFact,
+  AtlasFrame,
 } from "./types.js";
 
 // Environment configuration
@@ -169,6 +170,37 @@ app.get("/mcp/tools/list", (req, res) => {
       },
     },
     {
+      name: "thought.put_atlas_frame",
+      description: "Store an Atlas Frame for a work Frame with caching support",
+      input_schema: {
+        type: "object",
+        required: ["atlas_frame_id", "frame_id", "reference_module", "fold_radius", "modules", "edges"],
+        properties: {
+          atlas_frame_id: { type: "string" },
+          frame_id: { type: "string" },
+          atlas_timestamp: { type: "string", format: "date-time" },
+          reference_module: { type: "string" },
+          fold_radius: { type: "integer", minimum: 0, maximum: 5 },
+          modules: { type: "array" },
+          edges: { type: "array" },
+          critical_rule: { type: "string" }
+        },
+      },
+    },
+    {
+      name: "thought.get_atlas_frame",
+      description: "Get an Atlas Frame by ID or for a Frame",
+      input_schema: {
+        type: "object",
+        properties: {
+          atlas_frame_id: { type: "string" },
+          frame_id: { type: "string" },
+          reference_module: { type: "string" },
+          fold_radius: { type: "integer", minimum: 0, maximum: 5 }
+        },
+      },
+    },
+    {
       name: "thought.lock",
       description: "Acquire lock",
       input_schema: {
@@ -296,6 +328,50 @@ app.post("/mcp/tools/call", async (req, res) => {
           refs: row.refs ? JSON.parse(row.refs) : undefined,
         }));
         return res.json({ content: facts });
+      }
+
+      case "thought.put_atlas_frame": {
+        const atlasFrame: AtlasFrame = {
+          atlas_frame_id: args.atlas_frame_id,
+          frame_id: args.frame_id,
+          atlas_timestamp: args.atlas_timestamp || new Date().toISOString(),
+          reference_module: args.reference_module,
+          fold_radius: args.fold_radius,
+          modules: args.modules,
+          edges: args.edges,
+          critical_rule: args.critical_rule || "THE CRITICAL RULE: module_scope must use canonical module IDs from LexMap"
+        };
+        
+        const inserted = db.insertAtlasFrame(atlasFrame);
+        return res.json({ atlas_frame_id: atlasFrame.atlas_frame_id, inserted });
+      }
+
+      case "thought.get_atlas_frame": {
+        let atlasFrame: AtlasFrame | null = null;
+        
+        // Priority 1: Get by atlas_frame_id
+        if (args.atlas_frame_id) {
+          atlasFrame = db.getAtlasFrameById(args.atlas_frame_id);
+        }
+        // Priority 2: Get by frame_id
+        else if (args.frame_id) {
+          atlasFrame = db.getAtlasFrameByFrameId(args.frame_id);
+        }
+        // Priority 3: Get cached by reference_module and fold_radius
+        else if (args.reference_module && args.fold_radius !== undefined) {
+          atlasFrame = db.getCachedAtlasFrame(args.reference_module, args.fold_radius);
+          if (atlasFrame) {
+            cacheHits.labels("hit").inc();
+          } else {
+            cacheHits.labels("miss").inc();
+          }
+        }
+        
+        if (atlasFrame) {
+          return res.json({ content: atlasFrame });
+        } else {
+          return res.json({ content: null });
+        }
       }
 
       case "thought.lock": {
