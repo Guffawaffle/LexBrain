@@ -398,6 +398,19 @@ const tools = {
       const neighborhood = new Set(moduleScope);
       const visited = new Set();
 
+      // Build reverse lookup map: module -> modules that can call it (for O(1) lookup)
+      const callees = new Map();
+      for (const [moduleId, module] of Object.entries(modules)) {
+        if (module.allowed_callers) {
+          for (const caller of module.allowed_callers) {
+            if (!callees.has(caller)) {
+              callees.set(caller, []);
+            }
+            callees.get(caller).push(moduleId);
+          }
+        }
+      }
+
       // Expand neighborhood by fold_radius hops
       for (let hop = 0; hop < foldRadius; hop++) {
         const currentLayer = [...neighborhood].filter((id) => !visited.has(id));
@@ -415,18 +428,16 @@ const tools = {
             }
           }
 
-          // Add modules this one is allowed to call
-          // (find modules where this moduleId is in their allowed_callers)
-          for (const [otherId, otherModule] of Object.entries(modules)) {
-            if (
-              otherModule.allowed_callers &&
-              otherModule.allowed_callers.includes(moduleId)
-            ) {
-              neighborhood.add(otherId);
+          // Add modules this one is allowed to call (using reverse lookup map)
+          if (callees.has(moduleId)) {
+            for (const callee of callees.get(moduleId)) {
+              neighborhood.add(callee);
             }
           }
 
-          // Also consider forbidden_callers for structural awareness
+          // Include forbidden_callers for structural awareness
+          // These represent anti-patterns/violations and are important for
+          // understanding architectural constraints (e.g., "UI should NOT call auth-core directly")
           if (module.forbidden_callers) {
             for (const forbiddenCaller of module.forbidden_callers) {
               if (modules[forbiddenCaller]) {
