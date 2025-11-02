@@ -115,6 +115,7 @@ app.get("/mcp/tools/list", (req, res) => {
               "gate_result",
               "artifact",
               "note",
+              "frame",
             ],
           },
           scope: {
@@ -156,6 +157,7 @@ app.get("/mcp/tools/list", (req, res) => {
               "gate_result",
               "artifact",
               "note",
+              "frame",
             ],
           },
           path: { type: "string" },

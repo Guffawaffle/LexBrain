@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ThoughtFact } from './types.js';
+import { ThoughtFact, Frame } from './types.js';
 
 export interface DbRow {
   fact_id: string;
@@ -14,6 +14,19 @@ export interface DbRow {
   ttl_seconds: number | null;
   actor: string | null;
   refs: string | null;
+}
+
+export interface FrameRow {
+  id: string;
+  timestamp: string;
+  branch: string;
+  jira: string | null;
+  module_scope: string;
+  summary_caption: string;
+  reference_point: string;
+  status_snapshot: string;
+  keywords: string | null;
+  atlas_frame_id: string | null;
 }
 
 export class DbManager {
@@ -50,6 +63,21 @@ export class DbManager {
     `);
 
     this.db.exec(`
+      CREATE TABLE IF NOT EXISTS frames (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        branch TEXT NOT NULL,
+        jira TEXT,
+        module_scope TEXT NOT NULL,
+        summary_caption TEXT NOT NULL,
+        reference_point TEXT NOT NULL,
+        status_snapshot TEXT NOT NULL,
+        keywords TEXT,
+        atlas_frame_id TEXT
+      );
+    `);
+
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS locks (
         name TEXT PRIMARY KEY
       );
@@ -68,6 +96,58 @@ export class DbManager {
       CREATE INDEX IF NOT EXISTS idx_facts_ttl
       ON facts(ts, ttl_seconds)
       WHERE ttl_seconds IS NOT NULL;
+    `);
+
+    // Create indexes for frames table
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_frames_timestamp
+      ON frames(timestamp);
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_frames_branch
+      ON frames(branch);
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_frames_jira
+      ON frames(jira);
+    `);
+
+    // Create FTS5 virtual table for fuzzy search on reference_point
+    this.db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS frames_fts USING fts5(
+        id UNINDEXED,
+        reference_point,
+        summary_caption,
+        keywords,
+        content=frames,
+        content_rowid=rowid
+      );
+    `);
+
+    // Triggers to keep FTS table in sync
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS frames_ai AFTER INSERT ON frames BEGIN
+        INSERT INTO frames_fts(rowid, id, reference_point, summary_caption, keywords)
+        VALUES (new.rowid, new.id, new.reference_point, new.summary_caption, new.keywords);
+      END;
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS frames_ad AFTER DELETE ON frames BEGIN
+        INSERT INTO frames_fts(frames_fts, rowid, id, reference_point, summary_caption, keywords)
+        VALUES('delete', old.rowid, old.id, old.reference_point, old.summary_caption, old.keywords);
+      END;
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS frames_au AFTER UPDATE ON frames BEGIN
+        INSERT INTO frames_fts(frames_fts, rowid, id, reference_point, summary_caption, keywords)
+        VALUES('delete', old.rowid, old.id, old.reference_point, old.summary_caption, old.keywords);
+        INSERT INTO frames_fts(rowid, id, reference_point, summary_caption, keywords)
+        VALUES (new.rowid, new.id, new.reference_point, new.summary_caption, new.keywords);
+      END;
     `);
   }
 
@@ -150,6 +230,124 @@ export class DbManager {
     `);
     const result = stmt.run();
     return result.changes;
+  }
+
+  insertFrame(frame: Frame): boolean {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO frames (
+        id, timestamp, branch, jira, module_scope, summary_caption,
+        reference_point, status_snapshot, keywords, atlas_frame_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      frame.id,
+      frame.timestamp,
+      frame.branch,
+      frame.jira || null,
+      JSON.stringify(frame.module_scope),
+      frame.summary_caption,
+      frame.reference_point,
+      JSON.stringify(frame.status_snapshot),
+      frame.keywords ? JSON.stringify(frame.keywords) : null,
+      frame.atlas_frame_id || null
+    );
+
+    return result.changes > 0;
+  }
+
+  getFrameById(id: string): Frame | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM frames WHERE id = ?
+    `);
+    const row = stmt.get(id) as FrameRow | undefined;
+    
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      timestamp: row.timestamp,
+      branch: row.branch,
+      jira: row.jira || undefined,
+      module_scope: JSON.parse(row.module_scope),
+      summary_caption: row.summary_caption,
+      reference_point: row.reference_point,
+      status_snapshot: JSON.parse(row.status_snapshot),
+      keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
+      atlas_frame_id: row.atlas_frame_id || undefined
+    };
+  }
+
+  searchFrames(query: {
+    reference_point?: string;
+    jira?: string;
+    branch?: string;
+    limit?: number;
+  }): Frame[] {
+    let sql: string;
+    const params: any[] = [];
+    const conditions: string[] = [];
+
+    // Use FTS for fuzzy search on reference_point
+    if (query.reference_point) {
+      sql = `
+        SELECT frames.* FROM frames
+        INNER JOIN frames_fts ON frames.rowid = frames_fts.rowid
+        WHERE frames_fts MATCH ?
+      `;
+      params.push(query.reference_point);
+
+      // Add additional filters for jira and branch if provided
+      if (query.jira) {
+        conditions.push('frames.jira = ?');
+        params.push(query.jira);
+      }
+
+      if (query.branch) {
+        conditions.push('frames.branch = ?');
+        params.push(query.branch);
+      }
+
+      if (conditions.length > 0) {
+        sql += ' AND ' + conditions.join(' AND ');
+      }
+    } else {
+      // Standard query without FTS
+      sql = 'SELECT * FROM frames WHERE 1=1';
+
+      if (query.jira) {
+        sql += ' AND jira = ?';
+        params.push(query.jira);
+      }
+
+      if (query.branch) {
+        sql += ' AND branch = ?';
+        params.push(query.branch);
+      }
+    }
+
+    sql += ' ORDER BY timestamp DESC';
+    
+    if (query.limit) {
+      sql += ' LIMIT ?';
+      params.push(query.limit);
+    }
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as FrameRow[];
+
+    return rows.map(row => ({
+      id: row.id,
+      timestamp: row.timestamp,
+      branch: row.branch,
+      jira: row.jira || undefined,
+      module_scope: JSON.parse(row.module_scope),
+      summary_caption: row.summary_caption,
+      reference_point: row.reference_point,
+      status_snapshot: JSON.parse(row.status_snapshot),
+      keywords: row.keywords ? JSON.parse(row.keywords) : undefined,
+      atlas_frame_id: row.atlas_frame_id || undefined
+    }));
   }
 
   close() {
