@@ -36,17 +36,18 @@ try {
     const moduleCount = Object.keys(policy.modules || {}).length;
     console.log(`   Found ${moduleCount} modules`);
     
-    // Verify all modules have coords
-    let allHaveCoords = true;
+    // Verify coords contain valid numbers (beyond schema validation)
+    let allCoordsValid = true;
     for (const [moduleId, module] of Object.entries(policy.modules || {})) {
-      if (!module.coords || !Array.isArray(module.coords) || module.coords.length !== 2) {
-        console.error(`   ⚠️  Module "${moduleId}" has invalid coords`);
-        allHaveCoords = false;
+      const [x, y] = module.coords || [];
+      if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+        console.error(`   ⚠️  Module "${moduleId}" has non-numeric coords: [${x}, ${y}]`);
+        allCoordsValid = false;
       }
     }
     
-    if (allHaveCoords) {
-      console.log(`   All modules have valid coords`);
+    if (allCoordsValid) {
+      console.log(`   All modules have valid numeric coords`);
     }
     
     process.exit(0);
